@@ -15,6 +15,11 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
+            export NVM_DIR="$HOME/.nvm"
+            [ -d "$NVM_DIR" ] || curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+            . "$NVM_DIR/nvm.sh"
+            nvm install --lts
+            nvm use --lts
             cd /var/www/6831eecaafc85/data/www/6831eecaafce3.xvest3.ru/claudeproject
             git pull origin main --rebase
             npm install --omit=dev
@@ -22,3 +27,4 @@ jobs:
             command -v pm2 >/dev/null 2>&1 || npm install -g pm2
             pm2 startOrReload ecosystem.config.js --env production
             pm2 save
+            pm2 list
