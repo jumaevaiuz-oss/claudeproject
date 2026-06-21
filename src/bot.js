@@ -14,11 +14,24 @@ const HELP_TEXT = [
   "/add <vazifa> - yangi vazifa qo'shish",
   '/list - vazifalar ro\'yxati',
   '/done <raqam> - vazifani bajarilgan deb belgilash',
+  '/edit <raqam> <matn> - vazifa matnini tahrirlash',
   '/remove <raqam> - vazifani o\'chirish',
+  '/clear - bajarilgan vazifalarni tozalash',
 ].join('\n');
 
 bot.start((ctx) => ctx.reply(`Salom! Men vazifalar botiman.\n\n${HELP_TEXT}`));
 bot.help((ctx) => ctx.reply(HELP_TEXT));
+
+bot.telegram.setMyCommands([
+  { command: 'start', description: 'Botni ishga tushirish' },
+  { command: 'help', description: 'Yordam' },
+  { command: 'add', description: "Yangi vazifa qo'shish" },
+  { command: 'list', description: "Vazifalar ro'yxati" },
+  { command: 'done', description: 'Vazifani bajarilgan deb belgilash' },
+  { command: 'edit', description: 'Vazifa matnini tahrirlash' },
+  { command: 'remove', description: "Vazifani o'chirish" },
+  { command: 'clear', description: "Bajarilganlarni tozalash" },
+]).catch((err) => console.error('setMyCommands xatosi:', err));
 
 bot.command('add', (ctx) => {
   const text = ctx.message.text.replace(/^\/add(@\w+)?\s*/, '').trim();
@@ -59,6 +72,36 @@ bot.action(/^remove:(\d+)$/, async (ctx) => {
   await ctx.answerCbQuery(ok ? "O'chirildi!" : 'Topilmadi');
   const { text, keyboard } = renderList(ctx.chat.id);
   await ctx.editMessageText(text, keyboard || undefined);
+});
+
+bot.command('edit', (ctx) => {
+  const rest = ctx.message.text.replace(/^\/edit(@\w+)?\s*/, '').trim();
+  const match = rest.match(/^(\d+)\s+(.+)$/s);
+  if (!match) return ctx.reply('Foydalanish: /edit 1 Yangi matn');
+  const id = parseInt(match[1], 10);
+  const text = match[2].trim();
+  const ok = storage.editTask(ctx.chat.id, id, text);
+  return ctx.reply(ok ? `#${id} yangilandi: ${text}` : 'Topilmadi.');
+});
+
+bot.command('clear', (ctx) =>
+  ctx.reply(
+    "Bajarilgan vazifalarni o'chirishni tasdiqlaysizmi?",
+    Markup.inlineKeyboard([
+      [Markup.button.callback('Ha, tozalash', 'clear:yes'), Markup.button.callback("Yo'q", 'clear:no')],
+    ])
+  )
+);
+
+bot.action('clear:yes', async (ctx) => {
+  const count = storage.clearCompleted(ctx.chat.id);
+  await ctx.answerCbQuery();
+  await ctx.editMessageText(count ? `${count} ta bajarilgan vazifa o'chirildi.` : "Bajarilgan vazifalar yo'q edi.");
+});
+
+bot.action('clear:no', async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.editMessageText('Bekor qilindi.');
 });
 
 bot.command('done', (ctx) => {

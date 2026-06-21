@@ -55,4 +55,25 @@ function removeTask(chatId, id) {
   return true;
 }
 
-module.exports = { getTasks, addTask, completeTask, removeTask };
+function editTask(chatId, id, text) {
+  const data = readAll();
+  const tasks = data[chatId] || [];
+  const task = tasks.find((t) => t.id === id);
+  if (!task) return false;
+  task.text = text;
+  data[chatId] = tasks;
+  writeAll(data);
+  return true;
+}
+
+function clearCompleted(chatId) {
+  const data = readAll();
+  const tasks = data[chatId] || [];
+  const remaining = tasks.filter((t) => !t.done);
+  const removedCount = tasks.length - remaining.length;
+  data[chatId] = remaining;
+  writeAll(data);
+  return removedCount;
+}
+
+module.exports = { getTasks, addTask, completeTask, removeTask, editTask, clearCompleted };
