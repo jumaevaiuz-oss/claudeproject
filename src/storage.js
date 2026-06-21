@@ -11,13 +11,19 @@ function ensureDataFile() {
   if (!fs.existsSync(REMINDERS_FILE)) fs.writeFileSync(REMINDERS_FILE, '[]');
 }
 
+function atomicWrite(file, content) {
+  const tmp = `${file}.tmp`;
+  fs.writeFileSync(tmp, content);
+  fs.renameSync(tmp, file);
+}
+
 function readAll() {
   ensureDataFile();
   return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
 }
 
 function writeAll(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+  atomicWrite(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
 function getTasks(chatId) {
@@ -84,7 +90,7 @@ function readReminders() {
 }
 
 function writeReminders(reminders) {
-  fs.writeFileSync(REMINDERS_FILE, JSON.stringify(reminders, null, 2));
+  atomicWrite(REMINDERS_FILE, JSON.stringify(reminders, null, 2));
 }
 
 function getReminders() {

@@ -25,6 +25,10 @@ jobs:
             npm install --omit=dev
             echo "BOT_TOKEN=${{ secrets.BOT_TOKEN }}" > .env
             command -v pm2 >/dev/null 2>&1 || npm install -g pm2
+            pm2 list | grep -q pm2-logrotate || pm2 install pm2-logrotate
+            pm2 set pm2-logrotate:max_size 10M
+            pm2 set pm2-logrotate:retain 7
+            pm2 set pm2-logrotate:compress true
             pm2 startOrReload ecosystem.config.js --env production
             pm2 save
             pm2 list
