@@ -17,6 +17,7 @@ const HELP_TEXT = [
   '/edit <raqam> <matn> - vazifa matnini tahrirlash',
   '/remove <raqam> - vazifani o\'chirish',
   '/clear - bajarilgan vazifalarni tozalash',
+  "/remind <raqam> <daqiqa> - vazifa haqida eslatma o'rnatish",
 ].join('\n');
 
 bot.start((ctx) => ctx.reply(`Salom! Men vazifalar botiman.\n\n${HELP_TEXT}`));
@@ -31,7 +32,43 @@ bot.telegram.setMyCommands([
   { command: 'edit', description: 'Vazifa matnini tahrirlash' },
   { command: 'remove', description: "Vazifani o'chirish" },
   { command: 'clear', description: "Bajarilganlarni tozalash" },
+  { command: 'remind', description: "Vazifa haqida eslatma o'rnatish" },
 ]).catch((err) => console.error('setMyCommands xatosi:', err));
+
+bot.catch((err, ctx) => {
+  console.error(`Xato yuz berdi (${ctx.updateType}):`, err);
+});
+
+function scheduleReminder(reminder) {
+  const delay = reminder.remindAt - Date.now();
+  const fire = async () => {
+    storage.removeReminder(reminder.id);
+    try {
+      await bot.telegram.sendMessage(reminder.chatId, `⏰ Eslatma: vazifa #${reminder.taskId}`);
+    } catch (err) {
+      console.error('Eslatma yuborishda xato:', err);
+    }
+  };
+  if (delay <= 0) return fire();
+  setTimeout(fire, delay);
+}
+
+storage.getReminders().forEach(scheduleReminder);
+
+bot.command('remind', (ctx) => {
+  const parts = ctx.message.text.trim().split(/\s+/);
+  const id = parseInt(parts[1], 10);
+  const minutes = parseFloat(parts[2]);
+  if (!id || !minutes || minutes <= 0) {
+    return ctx.reply("Foydalanish: /remind 1 30  (30 daqiqadan keyin eslatadi)");
+  }
+  const task = storage.getTasks(ctx.chat.id).find((t) => t.id === id);
+  if (!task) return ctx.reply('Bunday vazifa topilmadi.');
+  const remindAt = Date.now() + minutes * 60 * 1000;
+  const reminderId = storage.addReminder(ctx.chat.id, id, remindAt);
+  scheduleReminder({ id: reminderId, chatId: ctx.chat.id, taskId: id, remindAt });
+  return ctx.reply(`Eslatma o'rnatildi: ${minutes} daqiqadan keyin "#${id} ${task.text}" haqida eslataman.`);
+});
 
 bot.command('add', (ctx) => {
   const text = ctx.message.text.replace(/^\/add(@\w+)?\s*/, '').trim();

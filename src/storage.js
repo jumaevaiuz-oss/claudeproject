@@ -3,10 +3,12 @@ const path = require('path');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DATA_FILE = path.join(DATA_DIR, 'tasks.json');
+const REMINDERS_FILE = path.join(DATA_DIR, 'reminders.json');
 
 function ensureDataFile() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, '{}');
+  if (!fs.existsSync(REMINDERS_FILE)) fs.writeFileSync(REMINDERS_FILE, '[]');
 }
 
 function readAll() {
@@ -76,4 +78,39 @@ function clearCompleted(chatId) {
   return removedCount;
 }
 
-module.exports = { getTasks, addTask, completeTask, removeTask, editTask, clearCompleted };
+function readReminders() {
+  ensureDataFile();
+  return JSON.parse(fs.readFileSync(REMINDERS_FILE, 'utf8'));
+}
+
+function writeReminders(reminders) {
+  fs.writeFileSync(REMINDERS_FILE, JSON.stringify(reminders, null, 2));
+}
+
+function getReminders() {
+  return readReminders();
+}
+
+function addReminder(chatId, taskId, remindAt) {
+  const reminders = readReminders();
+  const id = reminders.length ? Math.max(...reminders.map((r) => r.id)) + 1 : 1;
+  reminders.push({ id, chatId, taskId, remindAt });
+  writeReminders(reminders);
+  return id;
+}
+
+function removeReminder(id) {
+  writeReminders(readReminders().filter((r) => r.id !== id));
+}
+
+module.exports = {
+  getTasks,
+  addTask,
+  completeTask,
+  removeTask,
+  editTask,
+  clearCompleted,
+  getReminders,
+  addReminder,
+  removeReminder,
+};
