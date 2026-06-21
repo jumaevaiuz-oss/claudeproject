@@ -28,3 +28,4 @@ jobs:
             pm2 startOrReload ecosystem.config.js --env production
             pm2 save
             pm2 list
+            (crontab -l 2>/dev/null | grep -v 'pm2 resurrect'; echo "@reboot . \$HOME/.nvm/nvm.sh && pm2 resurrect") | crontab -

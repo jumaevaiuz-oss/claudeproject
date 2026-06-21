@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Telegraf } = require('telegraf');
+const { Telegraf, Markup } = require('telegraf');
 const storage = require('./storage');
 
 const token = process.env.BOT_TOKEN;
@@ -27,11 +27,38 @@ bot.command('add', (ctx) => {
   return ctx.reply(`Qo'shildi #${id}: ${text}`);
 });
 
+function renderList(chatId) {
+  const tasks = storage.getTasks(chatId);
+  if (!tasks.length) return { text: "Vazifalar yo'q.", keyboard: null };
+  const text = tasks.map((t) => `${t.done ? '✅' : '⬜'} #${t.id} ${t.text}`).join('\n');
+  const rows = tasks.map((t) => {
+    const buttons = [];
+    if (!t.done) buttons.push(Markup.button.callback(`✅ #${t.id}`, `done:${t.id}`));
+    buttons.push(Markup.button.callback(`🗑 #${t.id}`, `remove:${t.id}`));
+    return buttons;
+  });
+  return { text, keyboard: Markup.inlineKeyboard(rows) };
+}
+
 bot.command('list', (ctx) => {
-  const tasks = storage.getTasks(ctx.chat.id);
-  if (!tasks.length) return ctx.reply("Vazifalar yo'q.");
-  const lines = tasks.map((t) => `${t.done ? '✅' : '⬜'} #${t.id} ${t.text}`);
-  return ctx.reply(lines.join('\n'));
+  const { text, keyboard } = renderList(ctx.chat.id);
+  return keyboard ? ctx.reply(text, keyboard) : ctx.reply(text);
+});
+
+bot.action(/^done:(\d+)$/, async (ctx) => {
+  const id = parseInt(ctx.match[1], 10);
+  const ok = storage.completeTask(ctx.chat.id, id);
+  await ctx.answerCbQuery(ok ? 'Bajarildi!' : 'Topilmadi');
+  const { text, keyboard } = renderList(ctx.chat.id);
+  await ctx.editMessageText(text, keyboard || undefined);
+});
+
+bot.action(/^remove:(\d+)$/, async (ctx) => {
+  const id = parseInt(ctx.match[1], 10);
+  const ok = storage.removeTask(ctx.chat.id, id);
+  await ctx.answerCbQuery(ok ? "O'chirildi!" : 'Topilmadi');
+  const { text, keyboard } = renderList(ctx.chat.id);
+  await ctx.editMessageText(text, keyboard || undefined);
 });
 
 bot.command('done', (ctx) => {
